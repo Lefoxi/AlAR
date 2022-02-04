@@ -103,7 +103,15 @@ AFRAME.registerComponent('run', {
 
     //видны ли ровно 2 маркера?
     if(visible.length!=2)
+    {
+       //убрать видео, связанное не с двумя маркерами
+       for (let i = 0; i < 10 ; i++)
+         for (let j = 0; j < 10 ; j++)
+           if(i!=j && X[i][j]!=null)
+             X[i][j].setAttribute("visible", "false");
+       
        return; //выход, если не 2 маркера
+    }
 
     marker1 = visible[0]
     marker2 = visible[1]
