@@ -31,27 +31,27 @@ let distance = howmuch+1;
 let markerVisible = [ false, false, false, false, false, false, false, false, false, false ]; 
 
 //для хранения маркеров
-let M = [ false, false, false, false, false, false, false, false, false, false ]; 
+let M = [ null, null, null, null, null, null, null, null, null, null ]; 
 
 //для хранения накладывающихся на маркер объектов - плоскости
-let d = [ false, false, false, false, false, false, false, false, false, false ]; 
+let d = [ null, null, null, null, null, null, null, null, null, null ]; 
 
 //для хранения связанных с маркером объектов - видео
 let X = [
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
 ] ;//[ false, false, false, false, false, false, false, false, false, false ]; 
 
 //для хранения координат центров маркеров
-let p = [ false, false, false, false, false, false, false, false, false, false ]; 
+let p = [ null, null, null, null, null, null, null, null, null, null ]; 
 
 AFRAME.registerComponent('registerevents', { 
   init: function () { 
