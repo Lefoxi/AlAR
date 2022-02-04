@@ -5,230 +5,197 @@
 	<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 </head>
 <body>
-<!--<script>
+<script>
+
+/*
+10 маркеров: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+0-1, 0-2, 0-3, 0-4, 0-5, 0-6, 0-7, 0-8, 0-9  
+1-2, 1-3, 1-4, 1-5, 1-6, 1-7, 1-8, 1-9  
+2-3, 2-4, 2-5, 2-6, 2-7, 2-8, 2-9  
+3-4, 3-5, 3-6, 3-7, 3-8, 3-9  
+4-5, 4-6, 4-7, 4-8, 4-9  
+5-6, 5-7, 5-8, 5-9  
+6-7, 6-8, 6-9 
+7-8, 7-9 
+8-9 
+markerVisible[0], ... markerVisible[9]
+*/
+
 
 const howmuch=1.3;
 
 let isReaction = false;
 let distance = howmuch+1;
 
-let markerVisible = { A: false, B: false }; 
+//для хранения состояния видимости маркера с заданным номером
+let markerVisible = [ false, false, false, false, false, false, false, false, false, false ]; 
+
+//для хранения маркеров
+let M = [ false, false, false, false, false, false, false, false, false, false ]; 
+
+//для хранения накладывающихся на маркер объектов - плоскости
+let d = [ false, false, false, false, false, false, false, false, false, false ]; 
+
+//для хранения связанных с маркером объектов - видео
+let X = [
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+] ;//[ false, false, false, false, false, false, false, false, false, false ]; 
+
+//для хранения координат центров маркеров
+let p = [ false, false, false, false, false, false, false, false, false, false ]; 
+
 AFRAME.registerComponent('registerevents', { 
   init: function () { 
     let marker = this.el; 
     marker.addEventListener('markerFound', function() { 
-      markerVisible[ marker.id ] = true; 
-      this.dA = document.querySelector("#drawA"); 
-      this.dB = document.querySelector("#drawB"); 
-      this.dA.setAttribute("visible", "true");
-      this.dB.setAttribute("visible", "true");
+      index = parseInt(marker.id[1])
+      markerVisible[ index ] = true; 
+      d[index] = document.querySelector("#draw"+index); 
+      //X[index] = document.querySelector("#drawX"+index); 
+      if(d[index]!=null)
+        d[index].setAttribute("visible", "true");
+//      console.log("Found M = "+index);   
     }); 
     marker.addEventListener('markerLost', function() { 
-      markerVisible[ marker.id ] = false; 
+      index = parseInt(marker.id[1])
+      markerVisible[ index ] = false; 
+      if(d[index]!=null)
+        d[index].setAttribute("visible", "false");
+//      console.log("Lost M = "+index);   
     }); 
   } 
 }); 
 
 AFRAME.registerComponent('run', { 
   init: function() { 
-    this.A = document.querySelector("#A"); 
-    this.B = document.querySelector("#B"); 
-    this.dA = document.querySelector("#drawA"); 
-    this.dB = document.querySelector("#drawB"); 
-    this.dX = document.querySelector("#drawX"); 
-    this.dY = document.querySelector("#drawY"); 
-    this.p0 = new THREE.Vector3(); 
-    this.p1 = new THREE.Vector3();  
+    for (let i = 0; i < 10 ; i++)
+    {
+       M[i] = document.querySelector("#M"+i); 
+       d[i] = document.querySelector("#draw"+i); 
+//       X[i] = document.querySelector("#drawX"+i); 
+       p[i] = new THREE.Vector3(); 
+       if (markerVisible [i])
+          d[i].setAttribute("visible", "true");
+    }
+
+    for (let i = 0; i < 10 ; i++)
+      for (let j = 0; j < 10 ; j++)
+         if(i!=j)
+           X[i][j] = document.querySelector("#drawX"+i+""+j); 
+
   }, 
  
   tick: function (time, deltaTime) { 
-    if ( markerVisible["A"] && markerVisible["B"] ) // видны оба маркера
-    { 
-      this.A.object3D.getWorldPosition(this.p0); 
-      this.B.object3D.getWorldPosition(this.p1); 
-      distance = this.p0.distanceTo( this.p1 ); // меряем расстояние 
-      console.log("AB = "+distance);   
-      isReaction=(distance <= howmuch); //запуск реакции при предельном сближении маркеров
-    } 
+    //маркеры с какими номерами видны
+    let visible = [] 
+    for (let i=0;i<10;i++)
+      if (markerVisible[i]==true)
+         visible.push(i)//добавить в массив номер маркер
+
+    //видны ли ровно 2 маркера?
+    if(visible.length!=2)
+       return; //выход, если не 2 маркера
+
+    marker1 = visible[0]
+    marker2 = visible[1]
+
+    M[marker1].object3D.getWorldPosition(p[marker1]); 
+    M[marker2].object3D.getWorldPosition(p[marker2]); 
+
+    
+    distance = p[marker1].distanceTo( p[marker2] ); // меряем расстояние 
+    console.log("dist = "+distance);   
+    isReaction=(distance <= howmuch); //запуск реакции при предельном сближении маркеров
+
     if(isReaction) //если идет реакция
     {
-       this.dA.setAttribute("visible", "false");
-       this.dB.setAttribute("visible", "false");
-       this.dX.setAttribute("visible", "true");
-       this.dY.setAttribute("visible", "true");
-       if ( markerVisible["A"] || markerVisible["B"]  ) // если виден хотя бы один из маркеров
-       { 
-          if(markerVisible["A"] && markerVisible["B"] ) // видны оба маркера
-          {
-             this.dX.setAttribute("visible", "true");
-             this.dY.setAttribute("visible", "false");
-          }                   
-          if(markerVisible["A"] && !markerVisible["B"] ) // виден А, не виден B
-          {
-             this.dX.setAttribute("visible", "true");
-             this.dY.setAttribute("visible", "false");
-          }                   
-          if(!markerVisible["A"] && markerVisible["B"] ) // не виден А, виден B
-          {
-             this.dX.setAttribute("visible", "false");
-             this.dY.setAttribute("visible", "true");
-          }                   
-         console.log("distance = "+distance);//что-то показываем, потом убрать
-       }
-       else//если ни одного маркера не видно
-       {
-         isReaction=false;
-         this.dA.setAttribute("visible", "true");
-         this.dB.setAttribute("visible", "true");
-         this.dX.setAttribute("visible", "false");
-         this.dY.setAttribute("visible", "false");
-       }
+       if(d[marker1]!=null) d[marker1].setAttribute("visible", "false");
+       if(d[marker2]!=null) d[marker2].setAttribute("visible", "false");
+       X[marker1][marker2].setAttribute("visible", "true");
     }
-
-    if(!isReaction) //если не идет реакция
+    else
     {
-       this.dA = document.querySelector("#drawA"); 
-       this.dB = document.querySelector("#drawB"); 
-       this.dA.setAttribute("visible", "true");
-       this.dB.setAttribute("visible", "true");
-       this.dX.setAttribute("visible", "false");
-       this.dY.setAttribute("visible", "false");
-    }
-  } 
-}); 
-
-
-</script>-->
-	
-<script>
-
-const howmucha=1.3
-
-let isReactiona = false;
-let distancea = howmucha+1;
-
-let markerVisible = { A: false, C: false }; 
-AFRAME.registerComponent('registerevents', { 
-  init: function () { 
-    let marker = this.el; 
-    marker.addEventListener('markerFound', function() { 
-      markerVisible[ marker.id ] = true; 
-      this.dA = document.querySelector("#drawA"); 
-      this.dC = document.querySelector("#drawC"); 
-      this.dA.setAttribute("visible", "true");
-      this.dC.setAttribute("visible", "true");
-    }); 
-    marker.addEventListener('markerLost', function() { 
-      markerVisible[ marker.id ] = false; 
-    }); 
-  } 
-}); 
-
-AFRAME.registerComponent('run', { 
-  init: function() { 
-    this.A = document.querySelector("#A"); 
-    this.C = document.querySelector("#C"); 
-    this.dA = document.querySelector("#drawA"); 
-    this.dC = document.querySelector("#drawC"); 
-    this.dX = document.querySelector("#drawX"); 
-    this.dY = document.querySelector("#drawY"); 
-    this.p0 = new THREE.Vector3(); 
-    this.p1 = new THREE.Vector3();  
-  }, 
- 
-  tick: function (time, deltaTime) { 
-    if ( markerVisible["A"] && markerVisible["C"] ) // видны оба маркера
-    { 
-      this.A.object3D.getWorldPosition(this.p0); 
-      this.C.object3D.getWorldPosition(this.p1); 
-      distancea = this.p0.distanceTo( this.p1 ); // меряем расстояние 
-      console.log("AC = "+distancea);   
-      isReactiona=(distancea <= howmucha); //запуск реакции при предельном сближении маркеров
-    } 
-    if(isReactiona) //если идет реакция
-    {
-       this.dA.setAttribute("visible", "false");
-       this.dC.setAttribute("visible", "false");
-       this.dX.setAttribute("visible", "true");
-       this.dY.setAttribute("visible", "true");
-       if ( markerVisible["A"] || markerVisible["C"]  ) // если виден хотя бы один из маркеров
-       { 
-          if(markerVisible["A"] && markerVisible["C"] ) // видны оба маркера
-          {
-             this.dX.setAttribute("visible", "true");
-             this.dY.setAttribute("visible", "false");
-          }                   
-          if(markerVisible["A"] && !markerVisible["C"] ) // виден А, не виден B
-          {
-             this.dX.setAttribute("visible", "true");
-             this.dY.setAttribute("visible", "false");
-          }                   
-          if(!markerVisible["A"] && markerVisible["C"] ) // не виден А, виден B
-          {
-             this.dX.setAttribute("visible", "false");
-             this.dY.setAttribute("visible", "true");
-          }                   
-         console.log("distancea = "+distancea);//что-то показываем, потом убрать
-       }
-       else//если ни одного маркера не видно
-       {
-         isReactiona=false;
-         this.dA.setAttribute("visible", "true");
-         this.dC.setAttribute("visible", "true");
-         this.dX.setAttribute("visible", "false");
-         this.dY.setAttribute("visible", "false");
-       }
+       if(d[marker1]!=null) d[marker1].setAttribute("visible", "true");
+       if(d[marker2]!=null) d[marker2].setAttribute("visible", "true");
+       X[marker1][marker2].setAttribute("visible", "false");
     }
 
-    if(!isReactiona) //если не идет реакция
-    {
-       this.dA = document.querySelector("#drawA"); 
-       this.dC = document.querySelector("#drawC"); 
-       this.dA.setAttribute("visible", "true");
-       this.dC.setAttribute("visible", "true");
-       this.dX.setAttribute("visible", "false");
-       this.dY.setAttribute("visible", "false");
-    }
   } 
 }); 
 
 
 </script>
-	
-	
 <a-scene embedded vr-mode-ui="enabled: false;" arjs="debugUIEnabled: false; detectionMode: mono_and_matrix;"> 
   <a-assets>
-    <video id="video" preload="auto" autoplay loop="true" src="VID_2.mp4"></video>
-    <video id="video-a" preload="auto" autoplay loop="true" src="video_3.mp4"></video>
+    <video id="video01" preload="auto" autoplay loop="true" src="VID_1.mp4"></video>
+    <video id="video02" preload="auto" autoplay loop="true" src="VID_2.mp4"></video>
+    <video id="video03" preload="auto" autoplay loop="true" src="VID_3.mp4"></video>
+    <video id="video12" preload="auto" autoplay loop="true" src="VID_4.mp4"></video>
+    <video id="video13" preload="auto" autoplay loop="true" src="VID_5.mp4"></video>
+    <video id="video23" preload="auto" autoplay loop="true" src="VID_6.mp4"></video>
   </a-assets>
 
   <a-marker type="pattern" 
-url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/multimarkers/multi-abcdef/patt.a" id="A" registerevents> 
-  <a-plane src="https://github.com/Lefoxi/ARdip/blob/main/photo1.jpg" rotation="-90 0 0" id="drawA"></a-plane>
+url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/multimarkers/multi-abcdef/patt.a" id="M0" registerevents> 
+  <a-plane src="https://live.staticflickr.com/65535/51731456204_7110873bd3_z_d.jpg" rotation="-90 0 0" id="draw0"></a-plane>
   <!--<a-plane src="https://live.staticflickr.com/3097/2295905317_585b606a01_b.jpg" position="1 0 0" rotation="-90 0 0" id="drawX" visible="false"></a-plane>-->
   <!--<a-video src="#video" autoplay loop="true" position="1 0 0" rotation="-90 0 0" id="drawX" visible="false">-->
-<a-entity material="shader: flat; src: #video-a" geometry="primitive: plane; width: 1.60; height: 0.90;" position="-0.5 0 -1.5" 
-				rotation="-90 0 0" id="drawX" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video01" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX01" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video02" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX02" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video03" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX03" visible="false"></a-entity>	  
   </a-marker> 
+
   <a-marker type="pattern" 
-url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/multimarkers/multi-abcdef/patt.b" id="B" registerevents> 
-  <a-plane src="https://live.staticflickr.com/1757/41821018565_614db58ddc_b.jpg" rotation="-90 0 0" id="drawB"></a-plane>
-  <a-video src="#video" autoplay loop="true" position="1 0 0" rotation="90 0 0" id="drawY" visible="false">
+url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/multimarkers/multi-abcdef/patt.b" id="M1" registerevents> 
+  <a-plane src="https://live.staticflickr.com/65535/51731053663_c43d0f7522_z_d.jpg" rotation="-90 0 0" id="draw1"></a-plane>
+<a-entity material="shader: flat; src: #video01" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX10" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video12" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX12" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video13" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX13" visible="false"></a-entity>	  
   <!--<a-plane src="https://live.staticflickr.com/3097/2295905317_585b606a01_b.jpg" position="1 0 0" rotation="-90 0 0" id="drawY" visible="false"></a-plane>-->
-  </a-marker>
-	  
-   <a-marker type="pattern" 
-url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/multimarkers/multi-abcdef/patt.c" id="C" registerevents> 
-  <a-plane src="https://live.staticflickr.com/1757/41821018565_614db58ddc_b.jpg" rotation="-90 0 0" id="drawC"></a-plane>
-  <!--<a-plane src="https://live.staticflickr.com/3097/2295905317_585b606a01_b.jpg" position="1 0 0" rotation="-90 0 0" id="drawX" visible="false"></a-plane>-->
-  <!--<a-video src="#video" autoplay loop="true" position="1 0 0" rotation="-90 0 0" id="drawX" visible="false">-->
-<a-entity material="shader: flat; src: #video-a" geometry="primitive: plane; width: 1.60; height: 0.90;" position="-0.5 0 -1.5" 
-				rotation="-90 0 0" id="drawY" visible="false"></a-entity>	  
-  </a-marker>	  
+  </a-marker> 
+
+  <a-marker type="pattern" 
+url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/multimarkers/multi-abcdef/patt.c" id="M2" registerevents> 
+  <a-plane src="https://live.staticflickr.com/3156/2468030559_55f941b658_b.jpg" rotation="-90 0 0" id="draw1"></a-plane>
+<a-entity material="shader: flat; src: #video02" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX20" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video12" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX21" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video23" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX23" visible="false"></a-entity>	  
+  <!--<a-plane src="https://live.staticflickr.com/3097/2295905317_585b606a01_b.jpg" position="1 0 0" rotation="-90 0 0" id="drawY" visible="false"></a-plane>-->
+  </a-marker> 
+
+  <a-marker type="pattern" 
+url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/multimarkers/multi-abcdef/patt.d" id="M3" registerevents> 
+  <a-plane src="https://live.staticflickr.com/2800/4427325165_18c24af70d_b.jpg" rotation="-90 0 0" id="draw1"></a-plane>
+<a-entity material="shader: flat; src: #video03" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX30" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video13" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX31" visible="false"></a-entity>	  
+<a-entity material="shader: flat; src: #video23" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" 
+				rotation="-90 0 0" id="drawX32" visible="false"></a-entity>	  
+  <!--<a-plane src="https://live.staticflickr.com/3097/2295905317_585b606a01_b.jpg" position="1 0 0" rotation="-90 0 0" id="drawY" visible="false"></a-plane>-->
+  </a-marker> 
+
   <a-entity camera></a-entity> 
   <a-entity run></a-entity> 
 </a-scene> 
 
 </body>
 </html>
-
