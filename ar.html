@@ -1,0 +1,332 @@
+<html>
+<head>
+	<title>Віртуальна хімічна лабораторія у доповненій реальності</title>
+	<script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+	<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+<script>
+
+/*
+10 маркеров: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+0-1, 0-2, 0-3, 0-4, 0-5, 0-6, 0-7, 0-8, 0-9  
+1-2, 1-3, 1-4, 1-5, 1-6, 1-7, 1-8, 1-9  
+2-3, 2-4, 2-5, 2-6, 2-7, 2-8, 2-9  
+3-4, 3-5, 3-6, 3-7, 3-8, 3-9  
+4-5, 4-6, 4-7, 4-8, 4-9  
+5-6, 5-7, 5-8, 5-9  
+6-7, 6-8, 6-9 
+7-8, 7-9 
+8-9 
+markerVisible[0], ... markerVisible[9]
+*/
+
+
+const howmuch=1.4;
+
+let isReaction = false;
+let distance = howmuch+1;
+
+//для хранения состояния видимости маркера с заданным номером
+let markerVisible = [ false, false, false, false, false, false, false, false, false, false ]; 
+
+//для хранения маркеров
+let M = [ null, null, null, null, null, null, null, null, null, null ]; 
+
+//для хранения накладывающихся на маркер объектов - плоскости
+let d = [ null, null, null, null, null, null, null, null, null, null ]; 
+
+//для хранения связанных с маркером объектов - видео
+let X = [
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null],
+] ;//[ false, false, false, false, false, false, false, false, false, false ]; 
+
+//для хранения координат центров маркеров
+let p = [ null, null, null, null, null, null, null, null, null, null ]; 
+
+AFRAME.registerComponent('registerevents', { 
+  init: function () { 
+    let marker = this.el; 
+    marker.addEventListener('markerFound', function() { 
+      index = parseInt(marker.id[1])
+      markerVisible[ index ] = true; 
+      d[index] = document.querySelector("#draw"+index); 
+      //X[index] = document.querySelector("#drawX"+index); 
+      if(d[index]!=null)
+        d[index].setAttribute("visible", "true");
+//      console.log("Found M = "+index);   
+    }); 
+    marker.addEventListener('markerLost', function() { 
+      index = parseInt(marker.id[1])
+      markerVisible[ index ] = false; 
+      if(d[index]!=null)
+        d[index].setAttribute("visible", "false");
+//      console.log("Lost M = "+index);   
+    }); 
+  } 
+}); 
+
+isVideoPlay = false;
+
+AFRAME.registerComponent('run', { 
+  init: function() { 
+    for (let i = 0; i < 10 ; i++)
+    {
+       M[i] = document.querySelector("#M"+i); 
+       d[i] = document.querySelector("#draw"+i); 
+       p[i] = new THREE.Vector3(); 
+       if (markerVisible [i])
+          d[i].setAttribute("visible", "true");
+    }
+
+    for (let i = 0; i < 10 ; i++)
+      for (let j = 0; j < 10 ; j++)
+         if(i!=j)
+           X[i][j] = document.querySelector("#drawX"+i+""+j); 
+
+  }, 
+ 
+  tick: function (time, deltaTime) { 
+    //маркеры с какими номерами видны
+    let visible = [] 
+    for (let i=0;i<10;i++)
+      if (markerVisible[i]==true)
+         visible.push(i)//добавить в массив номер маркер
+
+    //видны ли ровно 2 маркера?
+    if(visible.length!=2)
+    {
+       //убрать видео, связанное не с двумя маркерами
+       for (let i = 0; i < 10 ; i++)
+         for (let j = 0; j < 10 ; j++)
+           if(i!=j && X[i][j]!=null)
+             X[i][j].setAttribute("visible", "false");
+
+       isVideoPlay = false;
+
+       return; //выход, если не 2 маркера
+    }
+
+    marker1 = visible[0];
+    marker2 = visible[1];
+
+    M[marker1].object3D.getWorldPosition(p[marker1]); 
+    M[marker2].object3D.getWorldPosition(p[marker2]); 
+
+    
+    distance = p[marker1].distanceTo( p[marker2] ); // меряем расстояние 
+    //console.log("dist = "+distance);   
+    isReaction=(distance <= howmuch); //запуск реакции при предельном сближении маркеров
+
+    if(isReaction) //если идет реакция
+    {
+       if(!isVideoPlay)
+       {
+         if(d[marker1]!=null) d[marker1].setAttribute("visible", "false");
+         if(d[marker2]!=null) d[marker2].setAttribute("visible", "false");
+         X[marker1][marker2].setAttribute("visible", "true");
+	 var id="#"+X[marker1][marker2].getAttribute("material").src.getAttribute("id");
+         var video=document.querySelector(id);
+         video.currentTime=0;
+         video.play();
+         isVideoPlay = true;
+       }
+    }
+    else
+    {
+       if(d[marker1]!=null) d[marker1].setAttribute("visible", "true");
+       if(d[marker2]!=null) d[marker2].setAttribute("visible", "true");
+       X[marker1][marker2].setAttribute("visible", "false");
+       var id="#"+X[marker1][marker2].getAttribute("material").src.getAttribute("id");
+       var video=document.querySelector(id);
+       video.currentTime=0;
+       video.pause();
+       isVideoPlay = false;
+    }
+
+  } 
+}); 
+
+</script>
+</head>
+
+<body>
+
+<!--<a-scene embedded vr-mode-ui="enabled: false;" arjs="debugUIEnabled: false; detectionMode: mono_and_matrix;" > -->
+<a-scene 
+    vr-mode-ui="enabled: false;"
+    renderer="logarithmicDepthBuffer: true;"
+    embedded
+    arjs="trackingMethod: best; sourceType: webcam;debugUIEnabled: false;"
+  >
+
+  <a-assets>
+    <video id="video00-1" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/09.mp4"></video>
+    <video id="video00-2" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/14.mp4" ></video>
+    <video id="video00-3" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/1.1.mp4"></video>
+    <video id="video00-4" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/1.2.mp4"></video>
+    <video id="video00-5" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/1.3.mp4"></video>
+    <video id="video00-6" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/1.4.mp4"></video>
+    <video id="video00-7" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/1.5.mp4"></video>
+
+    <video id="video02" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/16.mp4"></video>
+    <video id="video03-04" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/10.mp4"></video>
+    <video id="video05" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/17.mp4"></video>
+    <video id="video06" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/06.mp4"></video>
+    <video id="video07" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/03.mp4"></video>
+    <video id="video08-09" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/02.mp4"></video>
+
+    <video id="video12" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/08.mp4"></video>
+    <video id="video13" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/11.mp4"></video>
+    <video id="video14" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/13.mp4"></video>
+    <video id="video15" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/07.mp4"></video>
+    <video id="video16" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/05.mp4"></video>
+    <video id="video17" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/04.mp4"></video>
+    <video id="video18-19" preload="auto" muted poster="images/starting.jpg" loop="false" src="video/01.mp4"></video>
+  </a-assets>
+
+
+
+  <a-marker type="pattern" url="markers/pattern-0.patt" id="M0" registerevents> 
+    <a-plane src="images/AgNO3.jpg" rotation="-90 90 0" id="draw0"></a-plane>
+    <a-entity material="shader: flat; src: #video00-1" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX01" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video02" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX02" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video03-04" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX03" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video03-04" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX04" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video05" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX05" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video06" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX06" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video07" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX07" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video08-09" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX08" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video08-09" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX09" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-1.patt" id="M1" registerevents> 
+    <a-plane src="images/Pb(NO3)2.jpg" rotation="-90 90 0" id="draw1"></a-plane>
+    <a-entity material="shader: flat; src: #video12" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX12" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video13" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX13" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video14" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX14" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video15" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX15" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video16" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX16" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video17" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX17" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video18-19" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX18" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video18-19" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX19" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-2.patt" id="M2" registerevents> 
+    <a-plane src="images/HCl.jpg" rotation="-90 90 0" id="draw2"></a-plane>
+    <a-entity material="shader: flat; src: #video00-1" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX23" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-2" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX24" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-3" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX25" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-4" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX26" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-5" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX27" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-6" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX28" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-7" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX29" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-3.patt" id="M3" registerevents> 
+    <a-plane src="images/KCl.jpg" rotation="-90 90 0" id="draw3"></a-plane>
+    <a-entity material="shader: flat; src: #video00-1" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX34" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-2" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX35" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-3" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX36" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-4" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX37" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-5" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX38" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-6" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX39" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-4.patt" id="M4" registerevents> 
+    <a-plane src="images/NaCl.jpg" rotation="-90 90 0" id="draw4"></a-plane>
+    <a-entity material="shader: flat; src: #video00-7" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX45" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-1" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX46" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-2" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX47" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-3" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX48" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-4" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX49" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-5.patt" id="M5" registerevents> 
+    <a-plane src="images/NH4Cl.jpg" rotation="-90 90 0" id="draw5"></a-plane>
+    <a-entity material="shader: flat; src: #video00-5" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX56" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-6" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX57" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-7" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX58" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-1" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX59" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-6.patt" id="M6" registerevents> 
+    <a-plane src="images/KBr.jpg" rotation="-90 90 0" id="draw6"></a-plane>
+    <a-entity material="shader: flat; src: #video00-2" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX67" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-3" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX68" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-4" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX69" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-7.patt" id="M7" registerevents> 
+    <a-plane src="images/NH4Br.jpg" rotation="-90 90 0" id="draw7"></a-plane>
+    <a-entity material="shader: flat; src: #video00-5" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX78" visible="false"></a-entity>	  
+    <a-entity material="shader: flat; src: #video00-6" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX79" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-8.patt" id="M8" registerevents> 
+    <a-plane src="images/KI.jpg" rotation="-90 90 0" id="draw8"></a-plane>
+    <a-entity material="shader: flat; src: #video00-7" geometry="primitive: plane; width: 0.90; height: 1.60;" position="0 0 0" scale="1.5 1.5 1.5"
+				rotation="-90 0 0" id="drawX89" visible="false"></a-entity>	  
+  </a-marker> 
+
+  <a-marker type="pattern" url="markers/pattern-9.patt" id="M9" registerevents> 
+    <a-plane src="images/NH4I.jpg" rotation="-90 90 0" id="draw9"></a-plane>
+  </a-marker> 
+
+  <a-entity camera></a-entity> 
+  <a-entity run></a-entity> 
+</a-scene> 
+
+</body>
+</html>
